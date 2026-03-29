@@ -42,7 +42,6 @@ final class AppCoordinator: ObservableObject {
     private var usageSaveTimer: Timer?
     private var restEventMonitor: Any?
     private var flashTimer: Timer?
-    private var restWasSkipped = false
 
     init() {
         // Apply initial settings
@@ -107,11 +106,8 @@ final class AppCoordinator: ObservableObject {
                 guard let self else { return }
                 self.restController.dismiss()
                 self.endRestMode()
-                // Positive feedback only for natural completion, not skip
-                if !self.restWasSkipped {
-                    NotificationManager.sendRestComplete()
-                }
-                self.restWasSkipped = false
+                // Positive feedback
+                NotificationManager.sendRestComplete()
                 // Close rest session, start new work session if active
                 self.usageStore.endRestSession()
                 if !self.activityMonitor.isIdle {
@@ -285,20 +281,12 @@ final class AppCoordinator: ObservableObject {
         usageStore.startRestSession()
 
         let quote = quoteManager.random()
-        let canSkip = !timerEngine.skipUsedToday
 
         startRestMode()
 
         restController.show(
             quote: quote,
-            timerEngine: timerEngine,
-            canSkip: canSkip,
-            onSkip: { [weak self] in
-                self?.restWasSkipped = true
-                self?.usageStore.skipRestSession()
-                _ = self?.timerEngine.skipRest()
-                self?.endRestMode()
-            }
+            timerEngine: timerEngine
         )
     }
 
@@ -438,7 +426,7 @@ final class AppCoordinator: ObservableObject {
 
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 400, height: 460),
-            styleMask: [.titled, .closable],
+            styleMask: [.titled],
             backing: .buffered,
             defer: false
         )

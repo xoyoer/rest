@@ -85,16 +85,10 @@ struct CombinedSettingsView: View {
                         .foregroundStyle(.tertiary)
                 }
 
-                HStack {
-                    Text("每日可跳过")
-                    Spacer()
-                    Text("1 次")
-                        .foregroundStyle(.tertiary)
-                }
             } header: {
                 Text("通用")
             } footer: {
-                Text("无键鼠活动超过空闲判定时长后，计时自动暂停。")
+                Text("无键鼠活动超过 3 分钟后，计时自动暂停。")
             }
 
             // Guardian Lock

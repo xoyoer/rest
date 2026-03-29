@@ -19,20 +19,13 @@ struct OnboardingView: View {
             switch step {
             case .welcome:
                 WelcomePageView(
-                    onNext: { step = .setup },
-                    onSkip: {
-                        GuardianLock.shared.setupShown = true
-                        onSkip()
-                    }
+                    onNext: { step = .setup }
                 )
             case .setup:
                 GuardianSetupView(
                     isFirstLaunch: true,
                     onComplete: { step = .done },
-                    onSkip: {
-                        GuardianLock.shared.setupShown = true
-                        onSkip()
-                    }
+                    onSkip: { }  // First launch: no escape
                 )
             case .done:
                 SetupDoneView(onDone: onComplete)
@@ -48,7 +41,6 @@ extension OnboardingView.Step: Equatable {}
 
 struct WelcomePageView: View {
     var onNext: () -> Void
-    var onSkip: () -> Void
 
     var body: some View {
         VStack(spacing: 28) {
@@ -59,45 +51,30 @@ struct WelcomePageView: View {
                 .foregroundStyle(.green.opacity(0.7))
 
             VStack(spacing: 12) {
-                Text("你关心的人总是忘记休息吗？")
+                Text("TA 总是忘记休息？")
                     .font(.title3.weight(.medium))
 
-                VStack(spacing: 6) {
-                    Text("「休息」会在连续工作一定时间后，")
-                    Text("弹出全屏休息画面，温柔但坚定地让 TA 停下来。")
-                }
-                .font(.callout)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
+                Text("装上这个，TA 就跑不掉了。")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
             }
 
             VStack(spacing: 4) {
-                featureRow("timer", "自动计时，到点休息")
-                featureRow("eye.slash", "全屏覆盖，无法忽视")
-                featureRow("lock.shield", "设置密码，防止退出")
+                featureRow("timer", "连续工作到点，全屏休息")
+                featureRow("lock.shield", "密码在你手里，TA 退不掉")
+                featureRow("bolt.heart", "不是控制，是守护")
             }
             .padding(.vertical, 8)
 
             Spacer()
 
-            VStack(spacing: 12) {
-                Button(action: onNext) {
-                    Text("为 TA 设置守护锁")
-                        .frame(width: 200)
-                }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-
-                Button("先不设置") { onSkip() }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(.secondary)
-                    .font(.callout)
+            Button(action: onNext) {
+                Text("为 TA 设置守护锁")
+                    .frame(width: 200)
             }
-
-            Text("之后也可以在设置中开启")
-                .font(.caption)
-                .foregroundStyle(.tertiary)
-                .padding(.bottom, 8)
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
+            .padding(.bottom, 8)
         }
         .padding(36)
         .frame(width: 400, height: 460)
@@ -156,12 +133,18 @@ struct SetupDoneView: View {
 
             Spacer()
 
-            Button(action: onDone) {
-                Text("完成")
-                    .frame(width: 120)
+            VStack(spacing: 12) {
+                Button(action: onDone) {
+                    Text("完成")
+                        .frame(width: 120)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+
+                Text("你身边还有需要休息的人吗？")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
             }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
             .padding(.bottom, 16)
         }
         .padding(36)
@@ -193,8 +176,8 @@ struct GuardianSetupView: View {
                     .font(.title2.weight(.medium))
 
                 Text(isFirstLaunch
-                    ? "如果你关心的人总是忘记休息，\n帮 TA 设置一个只有你知道的密码。\nTA 想退出程序时，需要这个密码才行。"
-                    : "设置一个守护密码，退出程序时需要输入。\n建议让你的家人或朋友来设置。"
+                    ? "设一个只有你知道的密码。\nTA 想退出的时候，需要你的允许。"
+                    : "设置守护密码。退出程序时需要输入。"
                 )
                     .font(.callout)
                     .foregroundStyle(.secondary)
@@ -205,10 +188,10 @@ struct GuardianSetupView: View {
             // Form
             VStack(alignment: .leading, spacing: 14) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("你的称呼")
+                    Text("TA 平时怎么叫你")
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                    TextField("比如：老婆、妈妈、好朋友", text: $guardianName)
+                    TextField("这个名字会在 TA 想退出时看到", text: $guardianName)
                         .textFieldStyle(.roundedBorder)
                 }
 
@@ -236,24 +219,20 @@ struct GuardianSetupView: View {
                     .foregroundStyle(.red)
             }
 
-            // Buttons
-            HStack(spacing: 16) {
-                Button(isFirstLaunch ? "先不设置" : "取消") {
-                    onSkip()
-                }
-                .buttonStyle(.plain)
-                .foregroundStyle(.secondary)
-
+            // Button
+            if isFirstLaunch {
                 Button("启用守护锁") {
                     validate()
                 }
                 .buttonStyle(.borderedProminent)
-            }
-
-            if isFirstLaunch {
-                Text("之后也可以在设置中开启守护锁")
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
+            } else {
+                HStack(spacing: 16) {
+                    Button("取消") { onSkip() }
+                        .buttonStyle(.plain)
+                        .foregroundStyle(.secondary)
+                    Button("启用守护锁") { validate() }
+                        .buttonStyle(.borderedProminent)
+                }
             }
         }
         .padding(36)
