@@ -231,6 +231,72 @@ struct GuardianDisableView: View {
     }
 }
 
+// MARK: - Bedtime Cooldown Unlock (no guardian lock)
+
+struct BedtimeCooldownUnlockView: View {
+    var onUnlock: () -> Void
+    var onCancel: () -> Void
+
+    @State private var countdown = 60
+    @State private var canUnlock = false
+    @State private var timerCancellable: AnyCancellable?
+
+    var body: some View {
+        VStack(spacing: 20) {
+            Spacer()
+
+            Text("现在解锁，30 分钟后会重新锁定。")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+
+            Text("确定不睡了？")
+                .font(.title3.weight(.medium))
+
+            if canUnlock {
+                Button(action: {
+                    NSApp.keyWindow?.close()
+                    onUnlock()
+                }) {
+                    Text("临时解锁")
+                        .frame(width: 120)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(.orange)
+            } else {
+                Text("\(countdown) 秒")
+                    .font(.system(size: 28, weight: .light, design: .rounded))
+                    .foregroundStyle(.tertiary)
+                    .monospacedDigit()
+            }
+
+            Button("取消") {
+                NSApp.keyWindow?.close()
+                onCancel()
+            }
+                .buttonStyle(.plain)
+                .foregroundStyle(.secondary)
+
+            Spacer()
+        }
+        .padding(30)
+        .frame(width: 300, height: 260)
+        .onAppear {
+            timerCancellable = Timer.publish(every: 1, on: .main, in: .common)
+                .autoconnect()
+                .sink { _ in
+                    guard countdown > 0 else { return }
+                    countdown -= 1
+                    if countdown == 0 { canUnlock = true }
+                }
+        }
+        .onDisappear {
+            timerCancellable?.cancel()
+            timerCancellable = nil
+        }
+    }
+}
+
 // MARK: - Cooldown Exit (no guardian lock)
 
 struct CooldownExitView: View {

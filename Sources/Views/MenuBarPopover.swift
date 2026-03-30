@@ -3,6 +3,7 @@ import SwiftUI
 struct MenuBarPopover: View {
     @ObservedObject var timerEngine: TimerEngine
     @ObservedObject var usageStore: UsageStore
+    @ObservedObject var bedtimeEngine: BedtimeEngine
 
     var fatiguePercent: Int {
         FatigueCalculator.calculate(
@@ -14,6 +15,7 @@ struct MenuBarPopover: View {
     var onStartRest: () -> Void
     var onOpenSettings: () -> Void
     var onExit: () -> Void
+    var onBedtimeUnlock: () -> Void
 
     private let showTimeline = true
 
@@ -30,6 +32,7 @@ struct MenuBarPopover: View {
             HStack(alignment: .lastTextBaseline) {
                 Text("\(fatiguePercent)%")
                     .font(.system(size: 36, weight: .regular, design: .rounded))
+                    .foregroundStyle(progressColor(Double(fatiguePercent) / 100.0))
 
                 Spacer()
 
@@ -82,6 +85,48 @@ struct MenuBarPopover: View {
 
                 Divider()
                     .padding(.bottom, 8)
+            }
+
+            // Bedtime status
+            if bedtimeEngine.state == .approaching {
+                HStack {
+                    Image(systemName: "moon.fill")
+                        .font(.system(size: 10))
+                        .foregroundStyle(.orange)
+                    Text("距就寝 \(bedtimeEngine.minutesUntilBedtime) 分钟")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.orange)
+                    Spacer()
+                }
+                .padding(.bottom, 6)
+            } else if bedtimeEngine.state == .locked {
+                HStack {
+                    Image(systemName: "moon.fill")
+                        .font(.system(size: 10))
+                        .foregroundStyle(.purple)
+                    Text("就寝锁定中")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.purple)
+                    Spacer()
+                    Button("临时解锁") { onBedtimeUnlock() }
+                        .font(.system(size: 11))
+                        .buttonStyle(.plain)
+                        .foregroundStyle(.blue)
+                }
+                .padding(.bottom, 6)
+            } else if bedtimeEngine.state == .unlocked {
+                HStack {
+                    Image(systemName: "moon.fill")
+                        .font(.system(size: 10))
+                        .foregroundStyle(.orange)
+                    let min = bedtimeEngine.unlockDisplayRemaining / 60
+                    let sec = bedtimeEngine.unlockDisplayRemaining % 60
+                    Text("临时解锁 \(min):\(String(format: "%02d", sec))")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.orange)
+                    Spacer()
+                }
+                .padding(.bottom, 6)
             }
 
             // Actions

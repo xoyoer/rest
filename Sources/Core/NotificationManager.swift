@@ -41,6 +41,24 @@ struct NotificationManager {
         UNUserNotificationCenter.current().add(request)
     }
 
+    static func sendBedtimeWarning(minutes: Int) {
+        let content = UNMutableNotificationContent()
+        content.title = "休息"
+        if minutes > 0 {
+            content.body = "距离就寝还有 \(minutes) 分钟，准备收工"
+        } else {
+            content.body = "30 秒后进入就寝模式"
+        }
+        content.sound = .default
+
+        let request = UNNotificationRequest(
+            identifier: "bedtime-\(minutes)-\(Date().timeIntervalSince1970)",
+            content: content,
+            trigger: nil
+        )
+        UNUserNotificationCenter.current().add(request)
+    }
+
     static func sendOvertimeReminder() {
         let messages = [
             "今天工作了 8 小时，德国人早就下班了",

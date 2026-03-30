@@ -2,32 +2,18 @@ import AppKit
 import SwiftUI
 import IOKit.pwr_mgt
 
-// MARK: - LockdownPanel
-
-class LockdownPanel: NSPanel {
-    override var canBecomeKey: Bool { true }
-    override var canBecomeMain: Bool { false }
-
-    override func performKeyEquivalent(with event: NSEvent) -> Bool { true }
-    override func keyDown(with event: NSEvent) {}
-    override func flagsChanged(with event: NSEvent) {}
-
-    override func sendEvent(_ event: NSEvent) {
-        super.sendEvent(event)
-    }
-}
-
-// MARK: - RestWindowController
+// MARK: - BedtimeWindowController
 
 @MainActor
-class RestWindowController {
+class BedtimeWindowController {
     private var windows: [NSWindow] = []
     private var refocusTimer: Timer?
     private var sleepAssertionID: IOPMAssertionID = 0
 
     func show(
         quote: Quote,
-        timerEngine: TimerEngine
+        bedtimeEngine: BedtimeEngine,
+        onRequestUnlock: @escaping () -> Void
     ) {
         dismiss()
 
@@ -40,11 +26,12 @@ class RestWindowController {
             let wallpaperURL = NSWorkspace.shared.desktopImageURL(for: screen)
             let wallpaperImage: NSImage? = wallpaperURL.flatMap { NSImage(contentsOf: $0) }
 
-            let view = RestScreenView(
+            let view = BedtimeScreenView(
                 quote: quote,
-                timerEngine: timerEngine,
+                bedtimeEngine: bedtimeEngine,
                 wallpaperImage: wallpaperImage,
-                isMainScreen: isMain
+                isMainScreen: isMain,
+                onRequestUnlock: onRequestUnlock
             )
 
             let hostingView = NSHostingView(rootView: view)
@@ -83,7 +70,7 @@ class RestWindowController {
         IOPMAssertionCreateWithName(
             kIOPMAssertPreventUserIdleDisplaySleep as CFString,
             IOPMAssertionLevel(kIOPMAssertionLevelOn),
-            "xoyoer.idle rest screen active" as CFString,
+            "xoyoer.idle bedtime lock active" as CFString,
             &sleepAssertionID
         )
 
@@ -115,20 +102,22 @@ class RestWindowController {
     }
 }
 
-// MARK: - RestScreenView
+// MARK: - BedtimeScreenView
 
-struct RestScreenView: View {
+struct BedtimeScreenView: View {
     let quote: Quote
-    @ObservedObject var timerEngine: TimerEngine
+    @ObservedObject var bedtimeEngine: BedtimeEngine
     let wallpaperImage: NSImage?
     let isMainScreen: Bool
+    var onRequestUnlock: () -> Void
 
-    // Entrance animation
     @State private var showOverlay = false
     @State private var showQuote = false
     @State private var showBottom = false
-    @State private var breatheIn = false
     @State private var currentTime = Date()
+
+    // Update time every minute
+    private let minuteTimer = Timer.publish(every: 30, on: .main, in: .common).autoconnect()
 
     var body: some View {
         GeometryReader { geo in
@@ -144,10 +133,10 @@ struct RestScreenView: View {
                     Color.black
                 }
 
-                // Animated overlay with breathing rhythm
-                Color.black.opacity(showOverlay ? (breatheIn ? 0.65 : 0.45) : 0)
+                // Dark overlay — no breathing, static and heavier than rest screen
+                Color.black.opacity(showOverlay ? 0.75 : 0)
 
-                // Current time — lock screen style, updates every minute
+                // Current time
                 VStack {
                     Text(currentTime, format: .dateTime.hour().minute())
                         .font(.system(size: 56, weight: .thin, design: .rounded))
@@ -156,7 +145,7 @@ struct RestScreenView: View {
                     Spacer()
                 }
 
-                // Quote — staggered fade-in
+                // Quote
                 VStack(spacing: 16) {
                     Text(quote.en)
                         .font(.title2)
@@ -177,28 +166,45 @@ struct RestScreenView: View {
                     }
                 }
                 .padding(.horizontal, 80)
-                .offset(y: -40)
+                .offset(y: -20)
                 .opacity(showQuote ? 1 : 0)
 
-                // Bottom — remaining time
-                VStack {
-                    Spacer()
+                // Bottom area — shutdown button + unlock hint
+                if isMainScreen {
+                    VStack(spacing: 16) {
+                        Spacer()
 
-                    let remaining = Int(timerEngine.restRemainingSeconds)
-                    let min = remaining / 60
-                    let sec = remaining % 60
-                    Text(min > 0 ? "\(min):\(String(format: "%02d", sec))" : "\(sec)s")
-                        .font(.system(size: 14, weight: .ultraLight, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.3))
-                        .monospacedDigit()
-                        .padding(.bottom, 50)
+                        // Shutdown button
+                        Button(action: shutdownMac) {
+                            HStack(spacing: 8) {
+                                Image(systemName: "power")
+                                    .font(.system(size: 14))
+                                Text("关机")
+                                    .font(.system(size: 14, weight: .medium))
+                            }
+                            .foregroundStyle(.white.opacity(0.7))
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 10)
+                            .background(.white.opacity(0.1))
+                            .clipShape(Capsule())
+                        }
+                        .buttonStyle(.plain)
+
+                        // Unlock hint
+                        Text("点击菜单栏叶子图标临时解锁")
+                            .font(.system(size: 11))
+                            .foregroundStyle(.white.opacity(0.2))
+
+                        Spacer()
+                            .frame(height: 40)
+                    }
+                    .opacity(showBottom ? 1 : 0)
                 }
-                .opacity(showBottom ? 1 : 0)
             }
             .frame(width: geo.size.width, height: geo.size.height)
         }
         .ignoresSafeArea()
-        .onReceive(timerEngine.$restRemainingSeconds) { _ in
+        .onReceive(minuteTimer) { _ in
             currentTime = Date()
         }
         .onAppear {
@@ -211,11 +217,11 @@ struct RestScreenView: View {
             withAnimation(.easeIn(duration: 1.5).delay(1.5)) {
                 showBottom = true
             }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
-                withAnimation(.easeInOut(duration: 5).repeatForever(autoreverses: true)) {
-                    breatheIn = true
-                }
-            }
         }
+    }
+
+    private func shutdownMac() {
+        let script = NSAppleScript(source: "tell application \"System Events\" to shut down")
+        script?.executeAndReturnError(nil)
     }
 }

@@ -12,9 +12,11 @@ struct IdleApp: App {
             MenuBarPopover(
                 timerEngine: coordinator.timerEngine,
                 usageStore: coordinator.usageStore,
+                bedtimeEngine: coordinator.bedtimeEngine,
                 onStartRest: { coordinator.startManualRest() },
                 onOpenSettings: { coordinator.openSettings() },
-                onExit: { coordinator.requestExit() }
+                onExit: { coordinator.requestExit() },
+                onBedtimeUnlock: { coordinator.requestBedtimeUnlock() }
             )
         } label: {
             let icon = coordinator.isFlashing ? "leaf.fill" : "leaf"
@@ -28,6 +30,7 @@ struct IdleApp: App {
 final class AppCoordinator: ObservableObject {
     let activityMonitor = ActivityMonitor()
     let timerEngine = TimerEngine()
+    let bedtimeEngine = BedtimeEngine()
     let settings = AppSettings.shared
     let quoteManager = QuoteManager()
     let usageStore = UsageStore()
@@ -36,6 +39,7 @@ final class AppCoordinator: ObservableObject {
     private var idleSince: Date? = nil
 
     private let restController = RestWindowController()
+    private let bedtimeController = BedtimeWindowController()
     private var settingsWindow: NSWindow?
     private var cancellables = Set<AnyCancellable>()
     private var usageSaveTimer: Timer?
@@ -206,6 +210,22 @@ final class AppCoordinator: ObservableObject {
             }
         }
 
+        // Configure bedtime engine
+        bedtimeEngine.onBedtimeLock = { [weak self] in
+            self?.showBedtimeScreen()
+        }
+        bedtimeEngine.onBedtimeUnlock = { [weak self] in
+            self?.bedtimeController.dismiss()
+            self?.endRestMode()
+        }
+        bedtimeEngine.onBedtimeWarning = { [weak self] minutes in
+            NotificationManager.sendBedtimeWarning(minutes: minutes)
+            if minutes == 0 {
+                self?.flashMenuBarIcon()
+            }
+        }
+        bedtimeEngine.start()
+
         print("[xoyoer.idle] Started successfully")
 
         // First launch: open settings so user can find guardian lock
@@ -295,6 +315,71 @@ final class AppCoordinator: ObservableObject {
             quote: quote,
             timerEngine: timerEngine
         )
+    }
+
+    // MARK: - Bedtime
+
+    private func showBedtimeScreen() {
+        stopFlashing()
+        let quote = quoteManager.randomBedtime()
+        startRestMode()
+        bedtimeController.show(
+            quote: quote,
+            bedtimeEngine: bedtimeEngine,
+            onRequestUnlock: { [weak self] in
+                self?.requestBedtimeUnlock()
+            }
+        )
+    }
+
+    func requestBedtimeUnlock() {
+        if GuardianLock.shared.isEnabled {
+            // Guardian lock: require password
+            let alert = NSAlert()
+            alert.messageText = "临时解锁需要守护密码"
+            if !GuardianLock.shared.guardianName.isEmpty {
+                alert.informativeText = "请联系 \(GuardianLock.shared.guardianName) 获取密码\n解锁后 30 分钟将重新锁定"
+            } else {
+                alert.informativeText = "解锁后 30 分钟将重新锁定"
+            }
+            alert.addButton(withTitle: "确认")
+            alert.addButton(withTitle: "取消")
+
+            let input = NSSecureTextField(frame: NSRect(x: 0, y: 0, width: 200, height: 24))
+            input.placeholderString = "守护密码"
+            alert.accessoryView = input
+            alert.window.initialFirstResponder = input
+
+            NSApp.activate(ignoringOtherApps: true)
+            let response = alert.runModal()
+            if response == .alertFirstButtonReturn && GuardianLock.shared.verify(input.stringValue) {
+                bedtimeEngine.temporaryUnlock()
+            }
+        } else {
+            // No guardian lock: 60-second cooldown
+            showBedtimeCooldownUnlock()
+        }
+    }
+
+    private func showBedtimeCooldownUnlock() {
+        let cooldownView = BedtimeCooldownUnlockView(
+            onUnlock: { [weak self] in
+                self?.bedtimeEngine.temporaryUnlock()
+            },
+            onCancel: {}
+        )
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 300, height: 260),
+            styleMask: [.titled, .closable],
+            backing: .buffered,
+            defer: false
+        )
+        window.title = "休息"
+        window.level = .floating
+        window.contentView = NSHostingView(rootView: cooldownView)
+        window.center()
+        NSApp.activate(ignoringOtherApps: true)
+        window.makeKeyAndOrderFront(nil)
     }
 
     // MARK: - Rest Mode Event Interception

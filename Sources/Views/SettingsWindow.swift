@@ -91,6 +91,56 @@ struct CombinedSettingsView: View {
                 Text("无键鼠活动超过 \(settings.idleThresholdMinutes) 分钟后，计时自动暂停。")
             }
 
+            // Bedtime
+            Section {
+                Toggle("戒熬夜", isOn: $settings.bedtimeEnabled)
+
+                if settings.bedtimeEnabled {
+                    HStack {
+                        Text("就寝时间")
+                        Spacer()
+                        Picker("", selection: $settings.bedtimeHour) {
+                            ForEach([20, 21, 22, 23, 0, 1, 2, 3], id: \.self) { h in
+                                Text(String(format: "%d", h)).tag(h)
+                            }
+                        }
+                        .frame(width: 55)
+                        Text(":")
+                        Picker("", selection: $settings.bedtimeMinute) {
+                            ForEach([0, 30], id: \.self) { m in
+                                Text(String(format: "%02d", m)).tag(m)
+                            }
+                        }
+                        .frame(width: 55)
+                    }
+
+                    HStack {
+                        Text("开工时间")
+                        Spacer()
+                        Picker("", selection: $settings.wakeHour) {
+                            ForEach(5..<12) { h in
+                                Text("\(h):00").tag(h)
+                            }
+                        }
+                        .frame(width: 70)
+                        Text(":")
+                        Picker("", selection: $settings.wakeMinute) {
+                            ForEach([0, 30], id: \.self) { m in
+                                Text(String(format: "%02d", m)).tag(m)
+                            }
+                        }
+                        .frame(width: 55)
+                    }
+                }
+            } header: {
+                Text("戒熬夜")
+            } footer: {
+                Text(settings.bedtimeEnabled
+                    ? "就寝后全屏锁定，到开工时间自动解锁。提前 10 分钟开始提醒。"
+                    : "开启后到点全屏锁定，帮你戒掉熬夜。"
+                )
+            }
+
             // Guardian Lock
             Section {
                 if guardianLock.isEnabled {

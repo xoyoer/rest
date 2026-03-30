@@ -2,9 +2,10 @@ import Foundation
 
 struct QuoteManager: Sendable {
     private let quotes: [Quote]
+    private let bedtimeQuotes: [Quote]
 
     init() {
-        // 尝试从 bundle 加载 Quotes.json
+        // Load rest quotes
         if let url = Bundle.main.url(forResource: "Quotes", withExtension: "json"),
            let data = try? Data(contentsOf: url),
            let loaded = try? JSONDecoder().decode([Quote].self, from: data) {
@@ -12,11 +13,31 @@ struct QuoteManager: Sendable {
         } else {
             quotes = QuoteManager.builtInQuotes
         }
+        // Load bedtime quotes
+        if let url = Bundle.main.url(forResource: "BedtimeQuotes", withExtension: "json"),
+           let data = try? Data(contentsOf: url),
+           let loaded = try? JSONDecoder().decode([Quote].self, from: data) {
+            bedtimeQuotes = loaded
+        } else {
+            bedtimeQuotes = QuoteManager.builtInBedtimeQuotes
+        }
     }
 
     func random() -> Quote {
         quotes.randomElement() ?? Quote(en: "Take a break.", zh: "休息一下。", author: nil)
     }
+
+    func randomBedtime() -> Quote {
+        bedtimeQuotes.randomElement() ?? Quote(en: "Go to sleep.", zh: "去睡觉。", author: nil)
+    }
+
+    private static let builtInBedtimeQuotes: [Quote] = [
+        Quote(en: "The graveyard is full of indispensable men.", zh: "坟场里躺满了自以为不可或缺的人。", author: "Charles de Gaulle"),
+        Quote(en: "The work will still be there tomorrow. You might not be.", zh: "工作明天还在。你不一定。", author: nil),
+        Quote(en: "Burning the midnight oil is just burning yourself.", zh: "熬的不是夜，是你自己。", author: nil),
+        Quote(en: "The world will not end if you stop now.", zh: "你现在停下来，世界不会毁灭。", author: nil),
+        Quote(en: "Finish each day and be done with it. Tomorrow is a new day.", zh: "过完今天就算了。明天是新的一天。", author: "Ralph Waldo Emerson"),
+    ]
 
     private static let builtInQuotes: [Quote] = [
         Quote(
