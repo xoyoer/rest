@@ -20,15 +20,44 @@ final class GuardianLock: ObservableObject {
         set { defaults.set(newValue, forKey: "guardianPasswordHint") }
     }
 
-    func setPassword(_ password: String, name: String, hint: String = "") {
+    /// Set password and generate a one-time recovery code.
+    /// Returns the recovery code — must be shown to the guardian immediately.
+    @discardableResult
+    func setPassword(_ password: String, name: String, hint: String = "") -> String {
         let salt = UUID().uuidString
         let hashString = hash(password, salt: salt)
         defaults.set(hashString, forKey: "guardianPasswordHash")
         defaults.set(salt, forKey: "guardianPasswordSalt")
         defaults.set(name, forKey: "guardianName")
         defaults.set(hint, forKey: "guardianPasswordHint")
+
+        // Generate 8-character recovery code
+        let code = generateRecoveryCode()
+        let codeSalt = UUID().uuidString
+        defaults.set(hash(code, salt: codeSalt), forKey: "guardianRecoveryHash")
+        defaults.set(codeSalt, forKey: "guardianRecoverySalt")
+
         guardianName = name
         isEnabled = true
+        return code
+    }
+
+    func verifyRecoveryCode(_ code: String) -> Bool {
+        guard let stored = defaults.string(forKey: "guardianRecoveryHash") else { return false }
+        let salt = defaults.string(forKey: "guardianRecoverySalt") ?? ""
+        return hash(code, salt: salt) == stored
+    }
+
+    /// Reset guardian lock using recovery code
+    func resetWithRecoveryCode(_ code: String) -> Bool {
+        guard verifyRecoveryCode(code) else { return false }
+        disable()
+        return true
+    }
+
+    private func generateRecoveryCode() -> String {
+        let chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"  // No I/O/0/1 to avoid confusion
+        return String((0..<8).map { _ in chars.randomElement()! })
     }
 
     func verify(_ password: String) -> Bool {
@@ -41,6 +70,9 @@ final class GuardianLock: ObservableObject {
         defaults.removeObject(forKey: "guardianPasswordHash")
         defaults.removeObject(forKey: "guardianPasswordSalt")
         defaults.removeObject(forKey: "guardianName")
+        defaults.removeObject(forKey: "guardianPasswordHint")
+        defaults.removeObject(forKey: "guardianRecoveryHash")
+        defaults.removeObject(forKey: "guardianRecoverySalt")
         guardianName = ""
         isEnabled = false
     }

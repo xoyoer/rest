@@ -59,6 +59,7 @@ struct CombinedSettingsView: View {
     @State private var showChangePassword = false
     @State private var showDisable = false
     @State private var showCooldownExit = false
+    @State private var showRecovery = false
 
     var body: some View {
         Form {
@@ -157,6 +158,9 @@ struct CombinedSettingsView: View {
                     Text("修改密码")
                         .foregroundStyle(.blue)
                         .onTapGesture { showChangePassword = true }
+                    Text("忘记密码")
+                        .foregroundStyle(.blue)
+                        .onTapGesture { showRecovery = true }
                     Text("关闭守护锁")
                         .foregroundStyle(.red)
                         .onTapGesture { showDisable = true }
@@ -211,6 +215,9 @@ struct CombinedSettingsView: View {
         }
         .sheet(isPresented: $showCooldownExit) {
             CooldownExitView(onCancel: { showCooldownExit = false })
+        }
+        .sheet(isPresented: $showRecovery) {
+            GuardianRecoveryView(onDone: { showRecovery = false })
         }
     }
 

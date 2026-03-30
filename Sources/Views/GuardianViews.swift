@@ -12,78 +12,120 @@ struct GuardianSetupView: View {
     @State private var confirmPassword = ""
     @State private var passwordHint = ""
     @State private var errorMessage = ""
+    @State private var recoveryCode: String? = nil
 
     var body: some View {
-        VStack(spacing: 28) {
-            // Header
-            VStack(spacing: 10) {
-                Image(systemName: "lock.shield")
-                    .font(.system(size: 36))
-                    .foregroundStyle(.secondary)
+        if let code = recoveryCode {
+            // Recovery code display
+            VStack(spacing: 24) {
+                Spacer()
 
-                Text("为 TA 设置守护锁")
+                Image(systemName: "key.fill")
+                    .font(.system(size: 36))
+                    .foregroundStyle(.orange)
+
+                Text("恢复码")
                     .font(.title2.weight(.medium))
 
-                Text("设置守护密码。退出程序时需要输入。")
+                Text("请截图或记下来。忘记密码时唯一的找回方式。")
                     .font(.callout)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
-                    .lineSpacing(3)
-            }
 
-            // Form
-            VStack(alignment: .leading, spacing: 14) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("TA 平时怎么叫你")
-                        .font(.caption)
+                Text(code)
+                    .font(.system(size: 32, weight: .bold, design: .monospaced))
+                    .padding(.horizontal, 24)
+                    .padding(.vertical, 12)
+                    .background(Color.primary.opacity(0.06))
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .textSelection(.enabled)
+
+                Text("此码只显示一次，关闭后无法再查看。")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+
+                Spacer()
+
+                Button(action: { onComplete() }) {
+                    Text("已记下，完成")
+                        .frame(width: 160)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                .padding(.bottom, 8)
+            }
+            .padding(36)
+            .frame(width: 400, height: 460)
+        } else {
+            // Setup form
+            VStack(spacing: 28) {
+                VStack(spacing: 10) {
+                    Image(systemName: "lock.shield")
+                        .font(.system(size: 36))
                         .foregroundStyle(.secondary)
-                    TextField("这个名字会在 TA 想退出时看到", text: $guardianName)
-                        .textFieldStyle(.roundedBorder)
+
+                    Text("为 TA 设置守护锁")
+                        .font(.title2.weight(.medium))
+
+                    Text("设置守护密码。退出程序时需要输入。")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                        .lineSpacing(3)
                 }
 
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("守护密码")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    SecureField("至少 4 位", text: $password)
-                        .textFieldStyle(.roundedBorder)
+                VStack(alignment: .leading, spacing: 14) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("TA 平时怎么叫你")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        TextField("这个名字会在 TA 想退出时看到", text: $guardianName)
+                            .textFieldStyle(.roundedBorder)
+                    }
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("守护密码")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        SecureField("至少 4 位", text: $password)
+                            .textFieldStyle(.roundedBorder)
+                    }
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("确认密码")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        SecureField("再输入一次", text: $confirmPassword)
+                            .textFieldStyle(.roundedBorder)
+                    }
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("密码提示（选填）")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        TextField("忘记密码时显示", text: $passwordHint)
+                            .textFieldStyle(.roundedBorder)
+                    }
+                }
+                .frame(width: 260)
+
+                if !errorMessage.isEmpty {
+                    Text(errorMessage)
+                        .font(.callout)
+                        .foregroundStyle(.red)
                 }
 
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("确认密码")
-                        .font(.caption)
+                HStack(spacing: 16) {
+                    Button("取消") { onSkip() }
+                        .buttonStyle(.plain)
                         .foregroundStyle(.secondary)
-                    SecureField("再输入一次", text: $confirmPassword)
-                        .textFieldStyle(.roundedBorder)
-                }
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("密码提示（选填）")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    TextField("忘记密码时显示", text: $passwordHint)
-                        .textFieldStyle(.roundedBorder)
+                    Button("启用守护锁") { validate() }
+                        .buttonStyle(.borderedProminent)
                 }
             }
-            .frame(width: 260)
-
-            if !errorMessage.isEmpty {
-                Text(errorMessage)
-                    .font(.callout)
-                    .foregroundStyle(.red)
-            }
-
-            // Button
-            HStack(spacing: 16) {
-                Button("取消") { onSkip() }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(.secondary)
-                Button("启用守护锁") { validate() }
-                    .buttonStyle(.borderedProminent)
-            }
+            .padding(36)
+            .frame(width: 400, height: 460)
         }
-        .padding(36)
-        .frame(width: 400, height: 460)
     }
 
     private func validate() {
@@ -101,8 +143,8 @@ struct GuardianSetupView: View {
         }
         let name = guardianName.trimmingCharacters(in: .whitespaces)
         let hint = passwordHint.trimmingCharacters(in: .whitespaces)
-        GuardianLock.shared.setPassword(password, name: name, hint: hint)
-        onComplete()
+        let code = GuardianLock.shared.setPassword(password, name: name, hint: hint)
+        recoveryCode = code
     }
 }
 
@@ -116,43 +158,73 @@ struct GuardianChangePasswordView: View {
     @State private var confirmPassword = ""
     @State private var guardianName: String = GuardianLock.shared.guardianName
     @State private var errorMessage = ""
+    @State private var recoveryCode: String? = nil
 
     var body: some View {
-        VStack(spacing: 24) {
-            Text("修改守护密码")
-                .font(.headline)
+        if let code = recoveryCode {
+            VStack(spacing: 20) {
+                Image(systemName: "key.fill")
+                    .font(.system(size: 28))
+                    .foregroundStyle(.orange)
 
-            VStack(alignment: .leading, spacing: 12) {
-                SecureField("当前密码", text: $currentPassword)
-                    .textFieldStyle(.roundedBorder)
+                Text("新恢复码")
+                    .font(.headline)
 
-                Divider()
-
-                TextField("守护人称呼", text: $guardianName)
-                    .textFieldStyle(.roundedBorder)
-                SecureField("新密码（至少 4 位）", text: $newPassword)
-                    .textFieldStyle(.roundedBorder)
-                SecureField("确认新密码", text: $confirmPassword)
-                    .textFieldStyle(.roundedBorder)
-            }
-            .frame(width: 240)
-
-            if !errorMessage.isEmpty {
-                Text(errorMessage)
+                Text("密码已修改。请记下新的恢复码。")
                     .font(.callout)
-                    .foregroundStyle(.red)
-            }
-
-            HStack(spacing: 16) {
-                Button("取消") { onDone() }
-                    .buttonStyle(.plain)
                     .foregroundStyle(.secondary)
-                Button("确认修改") { attempt() }
+                    .multilineTextAlignment(.center)
+
+                Text(code)
+                    .font(.system(size: 28, weight: .bold, design: .monospaced))
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 10)
+                    .background(Color.primary.opacity(0.06))
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .textSelection(.enabled)
+
+                Button("已记下，完成") { onDone() }
                     .buttonStyle(.borderedProminent)
             }
+            .padding(30)
+            .frame(width: 320)
+        } else {
+            VStack(spacing: 24) {
+                Text("修改守护密码")
+                    .font(.headline)
+
+                VStack(alignment: .leading, spacing: 12) {
+                    SecureField("当前密码", text: $currentPassword)
+                        .textFieldStyle(.roundedBorder)
+
+                    Divider()
+
+                    TextField("守护人称呼", text: $guardianName)
+                        .textFieldStyle(.roundedBorder)
+                    SecureField("新密码（至少 4 位）", text: $newPassword)
+                        .textFieldStyle(.roundedBorder)
+                    SecureField("确认新密码", text: $confirmPassword)
+                        .textFieldStyle(.roundedBorder)
+                }
+                .frame(width: 240)
+
+                if !errorMessage.isEmpty {
+                    Text(errorMessage)
+                        .font(.callout)
+                        .foregroundStyle(.red)
+                }
+
+                HStack(spacing: 16) {
+                    Button("取消") { onDone() }
+                        .buttonStyle(.plain)
+                        .foregroundStyle(.secondary)
+                    Button("确认修改") { attempt() }
+                        .buttonStyle(.borderedProminent)
+                }
+            }
+            .padding(30)
+            .frame(width: 320)
         }
-        .padding(30)
-        .frame(width: 320)
     }
 
     private func attempt() {
@@ -173,8 +245,8 @@ struct GuardianChangePasswordView: View {
             return
         }
         let name = guardianName.trimmingCharacters(in: .whitespaces)
-        GuardianLock.shared.setPassword(newPassword, name: name)
-        onDone()
+        let code = GuardianLock.shared.setPassword(newPassword, name: name)
+        recoveryCode = code
     }
 }
 
@@ -227,6 +299,74 @@ struct GuardianDisableView: View {
         } else {
             errorMessage = "密码错误"
             password = ""
+        }
+    }
+}
+
+// MARK: - Guardian Recovery (forgot password)
+
+struct GuardianRecoveryView: View {
+    var onDone: () -> Void
+
+    @State private var code = ""
+    @State private var errorMessage = ""
+    @State private var success = false
+
+    var body: some View {
+        VStack(spacing: 20) {
+            if success {
+                Image(systemName: "checkmark.circle")
+                    .font(.system(size: 36))
+                    .foregroundStyle(.green)
+                Text("守护锁已重置")
+                    .font(.headline)
+                Text("可以重新设置守护锁。")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                Button("完成") { onDone() }
+                    .buttonStyle(.borderedProminent)
+            } else {
+                Text("忘记密码")
+                    .font(.headline)
+
+                Text("输入设置守护锁时显示的 8 位恢复码。")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+
+                TextField("恢复码", text: $code)
+                    .textFieldStyle(.roundedBorder)
+                    .font(.system(.body, design: .monospaced))
+                    .frame(width: 200)
+                    .onSubmit { attempt() }
+
+                if !errorMessage.isEmpty {
+                    Text(errorMessage)
+                        .font(.callout)
+                        .foregroundStyle(.red)
+                }
+
+                HStack(spacing: 16) {
+                    Button("取消") { onDone() }
+                        .buttonStyle(.plain)
+                        .foregroundStyle(.secondary)
+                    Button("重置守护锁") { attempt() }
+                        .buttonStyle(.borderedProminent)
+                        .tint(.red)
+                }
+            }
+        }
+        .padding(30)
+        .frame(width: 320)
+    }
+
+    private func attempt() {
+        let input = code.trimmingCharacters(in: .whitespaces).uppercased()
+        if GuardianLock.shared.resetWithRecoveryCode(input) {
+            success = true
+        } else {
+            errorMessage = "恢复码错误"
+            code = ""
         }
     }
 }
