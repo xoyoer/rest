@@ -5,18 +5,16 @@ struct WorkSession: Codable {
     var end: String?            // "HH:mm:ss" or nil if ongoing
     var seconds: TimeInterval   // precise duration in seconds
     var isRest: Bool            // true = rest period, false = work period
-    var skipped: Bool           // true = rest was skipped by user
 
-    init(start: String, end: String? = nil, seconds: TimeInterval = 0, isRest: Bool = false, skipped: Bool = false) {
+    init(start: String, end: String? = nil, seconds: TimeInterval = 0, isRest: Bool = false) {
         self.start = start
         self.end = end
         self.seconds = seconds
         self.isRest = isRest
-        self.skipped = skipped
     }
 
     enum CodingKeys: String, CodingKey {
-        case start, end, seconds, isRest, skipped
+        case start, end, seconds, isRest
     }
 
     init(from decoder: Decoder) throws {
@@ -25,7 +23,6 @@ struct WorkSession: Codable {
         end = try c.decodeIfPresent(String.self, forKey: .end)
         seconds = try c.decode(TimeInterval.self, forKey: .seconds)
         isRest = try c.decodeIfPresent(Bool.self, forKey: .isRest) ?? false
-        skipped = try c.decodeIfPresent(Bool.self, forKey: .skipped) ?? false
     }
 }
 
@@ -138,7 +135,7 @@ class UsageStore: ObservableObject {
 
     // MARK: - Work Session Tracking
 
-    private static let mergeWindowSeconds: TimeInterval = 15 * 60
+    private static let mergeWindowSeconds: TimeInterval = 10
 
     func startSession() {
         let key = logicalDay
@@ -190,21 +187,6 @@ class UsageStore: ObservableObject {
         records[idx].totalSeconds = records[idx].sessionTotalSeconds
         let session = WorkSession(start: Self.timeString(), isRest: true)
         records[idx].sessions.append(session)
-        save()
-    }
-
-    /// Mark the open rest session as skipped and close it
-    func skipRestSession() {
-        let key = logicalDay
-        guard let idx = records.firstIndex(where: { $0.date == key }) else { return }
-        let now = Self.timeString()
-        for i in records[idx].sessions.indices {
-            if records[idx].sessions[i].isRest && records[idx].sessions[i].end == nil {
-                records[idx].sessions[i].end = now
-                records[idx].sessions[i].skipped = true
-                records[idx].sessions[i].seconds = 0
-            }
-        }
         save()
     }
 

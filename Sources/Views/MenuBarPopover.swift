@@ -191,8 +191,7 @@ struct MenuBarPopover: View {
             Spacer()
 
             if session.isRest {
-                Text(session.skipped || (session.end != nil && session.seconds < 10)
-                    ? "跳过" : session.seconds > 0
+                Text(session.seconds > 0
                     ? "休息 \(FatigueCalculator.formatDuration(session.seconds))" : "休息中")
                     .foregroundStyle(.tertiary)
             } else {

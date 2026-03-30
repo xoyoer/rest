@@ -14,7 +14,6 @@ class TimerEngine: ObservableObject {
     @Published var todayTotalSeconds: TimeInterval = 0
     @Published var todayRestCount: Int = 0
     @Published var restRemainingSeconds: TimeInterval = 0
-    @Published var skipUsedToday: Bool = false
     @Published var preRestCountdown: Int = 0  // > 0 = pre-rest warning active
 
     var workDurationMinutes: Int = 60
@@ -102,13 +101,6 @@ class TimerEngine: ObservableObject {
         onForceRest?()
     }
 
-    func skipRest() -> Bool {
-        guard !skipUsedToday else { return false }
-        skipUsedToday = true
-        endRest()
-        return true
-    }
-
     func restoreContinuousWork(_ seconds: TimeInterval) {
         continuousWorkSeconds = seconds
     }
@@ -118,7 +110,6 @@ class TimerEngine: ObservableObject {
         todayTotalSeconds = 0
         todayRestCount = 0
         restRemainingSeconds = 0
-        skipUsedToday = false
         preRestCountdown = 0
         overtimeAlertSent = false
         state = .working

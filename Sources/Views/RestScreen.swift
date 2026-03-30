@@ -128,6 +128,7 @@ struct RestScreenView: View {
     @State private var showQuote = false
     @State private var showBottom = false
     @State private var breatheIn = false
+    @State private var currentTime = Date()
 
     var body: some View {
         GeometryReader { geo in
@@ -146,9 +147,9 @@ struct RestScreenView: View {
                 // Animated overlay with breathing rhythm
                 Color.black.opacity(showOverlay ? (breatheIn ? 0.63 : 0.57) : 0)
 
-                // Current time — lock screen style
+                // Current time — lock screen style, updates every minute
                 VStack {
-                    Text(Date(), format: .dateTime.hour().minute())
+                    Text(currentTime, format: .dateTime.hour().minute())
                         .font(.system(size: 56, weight: .thin, design: .rounded))
                         .foregroundStyle(.white.opacity(showQuote ? 0.7 : 0))
                         .padding(.top, 80)
@@ -197,6 +198,9 @@ struct RestScreenView: View {
             .frame(width: geo.size.width, height: geo.size.height)
         }
         .ignoresSafeArea()
+        .onReceive(timerEngine.$restRemainingSeconds) { _ in
+            currentTime = Date()
+        }
         .onAppear {
             withAnimation(.easeIn(duration: 2.0)) {
                 showOverlay = true

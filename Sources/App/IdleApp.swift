@@ -37,7 +37,6 @@ final class AppCoordinator: ObservableObject {
 
     private let restController = RestWindowController()
     private var settingsWindow: NSWindow?
-    private var guardianSetupWindow: NSWindow?
     private var cancellables = Set<AnyCancellable>()
     private var usageSaveTimer: Timer?
     private var restEventMonitor: Any?
@@ -209,12 +208,6 @@ final class AppCoordinator: ObservableObject {
 
         print("[xoyoer.idle] Started successfully")
 
-        // Show guardian setup on first launch
-        if !GuardianLock.shared.setupShown {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
-                self?.showGuardianSetup()
-            }
-        }
     }
 
     deinit {
@@ -326,6 +319,10 @@ final class AppCoordinator: ObservableObject {
                 guard let self else { timer.invalidate(); return }
                 count += 1
                 self.isFlashing = count % 2 == 1
+                // 30 秒预休息倒计时结束后自动停止闪烁（60 次 = 30 秒 / 0.5 秒）
+                if count >= 60 {
+                    self.stopFlashing()
+                }
             }
         }
     }
@@ -387,49 +384,4 @@ final class AppCoordinator: ObservableObject {
         GuardianLock.shared.showExitDialog()
     }
 
-    // MARK: - Guardian Lock: First Launch Setup
-
-    func showGuardianSetup() {
-        if guardianSetupWindow != nil { return }
-
-        let setupView = OnboardingView(
-            onComplete: { [weak self] in
-                self?.guardianSetupWindow?.close()
-                self?.guardianSetupWindow = nil
-            },
-            onSkip: { [weak self] in
-                self?.guardianSetupWindow?.close()
-                self?.guardianSetupWindow = nil
-            }
-        )
-
-        let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 400, height: 460),
-            styleMask: [.titled, .closable],
-            backing: .buffered,
-            defer: false
-        )
-        window.title = "休息"
-        window.acceptsMouseMovedEvents = true
-        window.contentView = NSHostingView(rootView: setupView)
-        window.center()
-        window.isReleasedWhenClosed = false
-        NSApp.activate(ignoringOtherApps: true)
-        window.makeKeyAndOrderFront(nil)
-        NSCursor.arrow.set()
-
-        guardianSetupWindow = window
-
-        // When user closes via X button, treat as "skip"
-        NotificationCenter.default.addObserver(
-            forName: NSWindow.willCloseNotification,
-            object: window,
-            queue: nil
-        ) { [weak self] _ in
-            MainActor.assumeIsolated {
-                GuardianLock.shared.setupShown = true
-                self?.guardianSetupWindow = nil
-            }
-        }
-    }
 }

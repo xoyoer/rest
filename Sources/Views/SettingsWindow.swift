@@ -149,7 +149,6 @@ struct CombinedSettingsView: View {
         .formStyle(.grouped)
         .sheet(isPresented: $showSetup) {
             GuardianSetupView(
-                isFirstLaunch: false,
                 onComplete: { showSetup = false },
                 onSkip: { showSetup = false }
             )

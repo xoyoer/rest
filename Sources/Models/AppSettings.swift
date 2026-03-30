@@ -14,12 +14,6 @@ class AppSettings: ObservableObject {
     @Published var idleThresholdMinutes: Int {
         didSet { UserDefaults.standard.set(idleThresholdMinutes, forKey: "idleThreshold") }
     }
-    @Published var lightReminderEnabled: Bool {
-        didSet { UserDefaults.standard.set(lightReminderEnabled, forKey: "lightReminder") }
-    }
-    @Published var lightReminderMinutes: Int {
-        didSet { UserDefaults.standard.set(lightReminderMinutes, forKey: "lightReminderInterval") }
-    }
     @Published var launchAtLogin: Bool {
         didSet {
             UserDefaults.standard.set(launchAtLogin, forKey: "launchAtLogin")
@@ -31,9 +25,7 @@ class AppSettings: ObservableObject {
         let d = UserDefaults.standard
         workDurationMinutes = d.object(forKey: "workDuration") as? Int ?? 60
         restDurationMinutes = d.object(forKey: "restDuration") as? Int ?? 15
-        idleThresholdMinutes = d.object(forKey: "idleThreshold") as? Int ?? 3
-        lightReminderEnabled = d.object(forKey: "lightReminder") as? Bool ?? true
-        lightReminderMinutes = d.object(forKey: "lightReminderInterval") as? Int ?? 30
+        idleThresholdMinutes = d.object(forKey: "idleThreshold") as? Int ?? 2
         launchAtLogin = true
         d.set(true, forKey: "launchAtLogin")
         updateLaunchAtLogin()

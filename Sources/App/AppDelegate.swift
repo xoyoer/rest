@@ -19,24 +19,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Hide dock icon — menu bar only app
         NSApp.setActivationPolicy(.accessory)
 
-        // Check accessibility permission
-        checkAccessibilityPermission()
-
         // Setup global shortcuts
         setupGlobalShortcuts()
 
         // Daily reset is now handled by AppCoordinator on idle→active transition,
         // not by a midnight timer. This prevents data loss when working past midnight.
-    }
-
-    // MARK: - Accessibility Permission
-
-    private func checkAccessibilityPermission() {
-        // 不弹系统对话框——由 popover 内提示引导用户手动在系统设置中添加
-        // 手动用"+"按钮添加的 TCC 记录比对话框触发的更持久
-        if !AXIsProcessTrusted() {
-            print("[xoyoer.idle] Accessibility permission not granted. Popover will show guidance.")
-        }
     }
 
     // MARK: - Global Shortcuts

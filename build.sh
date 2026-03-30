@@ -22,7 +22,6 @@ swiftc $SOURCES \
     -o "$BUILD_DIR/$BUNDLE_NAME/Contents/MacOS/idle" \
     -sdk "$SDK" \
     -target "$TARGET" \
-    -parse-as-library \
     -O
 
 # Copy resources
