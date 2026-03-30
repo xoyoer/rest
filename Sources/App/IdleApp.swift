@@ -333,6 +333,9 @@ final class AppCoordinator: ObservableObject {
     }
 
     func requestBedtimeUnlock() {
+        // Pause lock screen refocus so dialogs can receive input
+        bedtimeController.pauseRefocus()
+
         if GuardianLock.shared.isEnabled {
             // Guardian lock: require password
             let alert = NSAlert()
@@ -350,10 +353,18 @@ final class AppCoordinator: ObservableObject {
             alert.accessoryView = input
             alert.window.initialFirstResponder = input
 
+            // Place alert above lock screen
+            alert.window.level = NSWindow.Level(
+                rawValue: Int(CGWindowLevelForKey(.screenSaverWindow)) + 2
+            )
+
             NSApp.activate(ignoringOtherApps: true)
             let response = alert.runModal()
             if response == .alertFirstButtonReturn && GuardianLock.shared.verify(input.stringValue) {
                 bedtimeEngine.temporaryUnlock()
+            } else {
+                // Cancelled or wrong password — resume refocus
+                bedtimeController.resumeRefocus()
             }
         } else {
             // No guardian lock: 60-second cooldown
@@ -375,7 +386,10 @@ final class AppCoordinator: ObservableObject {
             defer: false
         )
         window.title = "休息"
-        window.level = .floating
+        // Must be above the bedtime lock screen (screenSaver + 1)
+        window.level = NSWindow.Level(
+            rawValue: Int(CGWindowLevelForKey(.screenSaverWindow)) + 2
+        )
         window.contentView = NSHostingView(rootView: cooldownView)
         window.center()
         NSApp.activate(ignoringOtherApps: true)

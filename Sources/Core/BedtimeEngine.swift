@@ -24,9 +24,14 @@ class BedtimeEngine: ObservableObject {
 
     private var lastWarningMinute: Int = -1
     private let warningMinutes = [10, 5, 1]
+    private var wasBedtimeEnabled: Bool = false
+    private var skipCurrentWindow: Bool = false
 
     func start() {
         stop()
+        // Initialize tracking from current settings so app-startup lock works normally
+        wasBedtimeEnabled = AppSettings.shared.bedtimeEnabled
+        skipCurrentWindow = false
         timer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) {
             [weak self] _ in
             DispatchQueue.main.async { [weak self] in
@@ -79,19 +84,32 @@ class BedtimeEngine: ObservableObject {
                 state = .off
                 lastWarningMinute = -1
             }
+            wasBedtimeEnabled = false
+            skipCurrentWindow = false
             return
+        }
+
+        // Detect transition: feature just toggled on
+        if !wasBedtimeEnabled {
+            wasBedtimeEnabled = true
+            if isInBedtimeWindow() {
+                // Feature enabled while already in bedtime window — skip until next window
+                skipCurrentWindow = true
+            }
         }
 
         // If temporarily unlocked, let the unlock timer handle state
         if state == .unlocked { return }
 
         if isInBedtimeWindow() {
+            if skipCurrentWindow { return }
             if state != .locked && state != .unlocked {
                 state = .locked
                 lastWarningMinute = -1
                 onBedtimeLock?()
             }
         } else {
+            skipCurrentWindow = false  // Reset when leaving bedtime window
             let minutes = minutesUntil(hour: settings.bedtimeHour, minute: settings.bedtimeMinute)
             minutesUntilBedtime = minutes
 

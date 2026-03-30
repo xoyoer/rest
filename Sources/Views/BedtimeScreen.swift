@@ -84,6 +84,21 @@ class BedtimeWindowController {
         }
     }
 
+    func pauseRefocus() {
+        refocusTimer?.invalidate()
+        refocusTimer = nil
+    }
+
+    func resumeRefocus() {
+        guard refocusTimer == nil, !windows.isEmpty else { return }
+        refocusTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
+            DispatchQueue.main.async { [weak self] in
+                self?.windows.first?.makeKeyAndOrderFront(nil)
+                NSCursor.arrow.set()
+            }
+        }
+    }
+
     func dismiss() {
         refocusTimer?.invalidate()
         refocusTimer = nil
@@ -190,10 +205,21 @@ struct BedtimeScreenView: View {
                         }
                         .buttonStyle(.plain)
 
-                        // Unlock hint
-                        Text("点击菜单栏叶子图标临时解锁")
-                            .font(.system(size: 11))
-                            .foregroundStyle(.white.opacity(0.2))
+                        // Unlock button
+                        Button(action: onRequestUnlock) {
+                            HStack(spacing: 6) {
+                                Image(systemName: "lock.open")
+                                    .font(.system(size: 12))
+                                Text("临时解锁")
+                                    .font(.system(size: 13, weight: .medium))
+                            }
+                            .foregroundStyle(.white.opacity(0.5))
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 10)
+                            .background(.white.opacity(0.08))
+                            .clipShape(Capsule())
+                        }
+                        .buttonStyle(.plain)
 
                         Spacer()
                             .frame(height: 40)
@@ -221,7 +247,10 @@ struct BedtimeScreenView: View {
     }
 
     private func shutdownMac() {
-        let script = NSAppleScript(source: "tell application \"System Events\" to shut down")
-        script?.executeAndReturnError(nil)
+        // Use login window approach — more reliable than AppleScript System Events
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
+        process.arguments = ["-e", "tell application \"loginwindow\" to «event aevtrsdn»"]
+        try? process.run()
     }
 }
