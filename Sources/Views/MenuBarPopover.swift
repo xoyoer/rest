@@ -17,8 +17,6 @@ struct MenuBarPopover: View {
     var onExit: () -> Void
     var onBedtimeUnlock: () -> Void
 
-    private let showTimeline = true
-
     private var sessions: [WorkSession] {
         usageStore.todayMergedSessions().filter { session in
             session.isRest || session.end == nil || session.seconds >= 60
@@ -68,24 +66,23 @@ struct MenuBarPopover: View {
                 .padding(.bottom, 10)
 
             // Timeline (collapsible)
-            if showTimeline {
-                if sessions.isEmpty {
-                    Text("暂无记录")
-                        .font(.system(size: 12))
-                        .foregroundStyle(.tertiary)
-                        .padding(.bottom, 10)
-                } else {
-                    VStack(alignment: .leading, spacing: 5) {
-                        ForEach(Array(sessions.enumerated()), id: \.offset) { _, session in
-                            sessionRow(session)
-                        }
-                    }
+            // Timeline
+            if sessions.isEmpty {
+                Text("暂无记录")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.tertiary)
                     .padding(.bottom, 10)
+            } else {
+                VStack(alignment: .leading, spacing: 5) {
+                    ForEach(Array(sessions.enumerated()), id: \.offset) { _, session in
+                        sessionRow(session)
+                    }
                 }
-
-                Divider()
-                    .padding(.bottom, 8)
+                .padding(.bottom, 10)
             }
+
+            Divider()
+                .padding(.bottom, 8)
 
             // Bedtime status
             if bedtimeEngine.state == .approaching {
