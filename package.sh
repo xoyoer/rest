@@ -4,8 +4,8 @@ set -e
 APP_NAME="休息"
 BUILD_DIR="build"
 BUNDLE_NAME="$APP_NAME.app"
-DMG_NAME="休息.dmg"
-VERSION=$(defaults read "$(pwd)/$BUILD_DIR/$BUNDLE_NAME/Contents/Info.plist" CFBundleShortVersionString 2>/dev/null || echo "1.0.0")
+VERSION=$(/usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" Info.plist 2>/dev/null || echo "1.0.0")
+DMG_NAME="Rest-${VERSION}.dmg"
 
 # Build first if needed
 if [ ! -d "$BUILD_DIR/$BUNDLE_NAME" ]; then

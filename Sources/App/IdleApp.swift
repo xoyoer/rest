@@ -208,6 +208,13 @@ final class AppCoordinator: ObservableObject {
 
         print("[xoyoer.idle] Started successfully")
 
+        // First launch: open settings so user can find guardian lock
+        if !UserDefaults.standard.bool(forKey: "hasLaunched") {
+            UserDefaults.standard.set(true, forKey: "hasLaunched")
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+                self?.openSettings()
+            }
+        }
     }
 
     deinit {
