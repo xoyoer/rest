@@ -113,12 +113,7 @@ class UsageStore: ObservableObject {
 
     // MARK: - Today
 
-    private static let dateFmt: DateFormatter = {
-        let f = DateFormatter()
-        f.dateFormat = "yyyy-MM-dd"
-        f.locale = Locale(identifier: "en_US_POSIX")
-        return f
-    }()
+    private static var dateFmt: DateFormatter { DateFormatting.dateFmt }
 
     func recordForToday() -> UsageRecord {
         let key = logicalDay
@@ -326,12 +321,7 @@ class UsageStore: ObservableObject {
         }
     }
 
-    private static let timeFmt: DateFormatter = {
-        let f = DateFormatter()
-        f.dateFormat = "HH:mm:ss"
-        f.locale = Locale(identifier: "en_US_POSIX")
-        return f
-    }()
+    private static var timeFmt: DateFormatter { DateFormatting.timeFmt }
 
     private static func timeString() -> String {
         timeFmt.string(from: Date())

@@ -83,7 +83,7 @@ final class ActivityMonitor: ObservableObject {
         var minIdle = Double.greatestFiniteMagnitude
         for t in types {
             let s = CGEventSource.secondsSinceLastEventType(.combinedSessionState, eventType: t)
-            if s < minIdle { minIdle = s }
+            if s >= 0 && s < minIdle { minIdle = s }
         }
         return minIdle
     }

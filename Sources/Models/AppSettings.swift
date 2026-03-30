@@ -31,7 +31,7 @@ class AppSettings: ObservableObject {
         let d = UserDefaults.standard
         workDurationMinutes = d.object(forKey: "workDuration") as? Int ?? 60
         restDurationMinutes = d.object(forKey: "restDuration") as? Int ?? 15
-        idleThresholdMinutes = 3
+        idleThresholdMinutes = d.object(forKey: "idleThreshold") as? Int ?? 3
         lightReminderEnabled = d.object(forKey: "lightReminder") as? Bool ?? true
         lightReminderMinutes = d.object(forKey: "lightReminderInterval") as? Int ?? 30
         launchAtLogin = true

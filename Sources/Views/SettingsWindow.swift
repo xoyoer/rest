@@ -46,7 +46,7 @@ struct SettingsContainer: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .frame(width: 480, height: 540)
+        .frame(width: 480, height: 700)
     }
 }
 
@@ -58,7 +58,7 @@ struct CombinedSettingsView: View {
     @State private var showSetup = false
     @State private var showChangePassword = false
     @State private var showDisable = false
-    @State private var showExit = false
+    @State private var showCooldownExit = false
 
     var body: some View {
         Form {
@@ -88,7 +88,7 @@ struct CombinedSettingsView: View {
             } header: {
                 Text("通用")
             } footer: {
-                Text("无键鼠活动超过 3 分钟后，计时自动暂停。")
+                Text("无键鼠活动超过 \(settings.idleThresholdMinutes) 分钟后，计时自动暂停。")
             }
 
             // Guardian Lock
@@ -104,11 +104,22 @@ struct CombinedSettingsView: View {
                             .font(.system(size: 13))
                     }
 
-                    Button("修改密码") { showChangePassword = true }
-                    Button("关闭守护锁") { showDisable = true }
+                    Text("修改密码")
+                        .foregroundStyle(.blue)
+                        .onTapGesture { showChangePassword = true }
+                    Text("关闭守护锁")
                         .foregroundStyle(.red)
+                        .onTapGesture { showDisable = true }
+                    Text("退出程序")
+                        .foregroundStyle(.red)
+                        .onTapGesture { exitWithGuardianPassword() }
                 } else {
-                    Button("设置守护锁") { showSetup = true }
+                    Text("设置守护锁")
+                        .foregroundStyle(.blue)
+                        .onTapGesture { showSetup = true }
+                    Text("退出程序")
+                        .foregroundStyle(.red)
+                        .onTapGesture { showCooldownExit = true }
                 }
             } header: {
                 Text("守护锁")
@@ -117,14 +128,6 @@ struct CombinedSettingsView: View {
                     ? "退出程序需要守护密码。"
                     : "启用后退出程序需要密码。建议让关心你的人来设置。"
                 )
-            }
-
-            // Exit
-            if guardianLock.isEnabled {
-                Section {
-                    Button("退出程序") { showExit = true }
-                        .foregroundStyle(.red)
-                }
             }
 
             // About
@@ -138,11 +141,9 @@ struct CombinedSettingsView: View {
                 HStack {
                     Text("开发者")
                     Spacer()
-                    Text("xoyoer")
+                    Link("@xoyoer", destination: URL(string: "https://www.xiaohongshu.com/user/profile/5fdde5a300000000010069f4")!)
                         .foregroundStyle(.secondary)
                 }
-            } footer: {
-                Text("所有数据仅存储在本机，不会上传到任何服务器。")
             }
         }
         .formStyle(.grouped)
@@ -159,8 +160,12 @@ struct CombinedSettingsView: View {
         .sheet(isPresented: $showDisable) {
             GuardianDisableView(onDone: { showDisable = false })
         }
-        .sheet(isPresented: $showExit) {
-            GuardianExitView(onCancel: { showExit = false })
+        .sheet(isPresented: $showCooldownExit) {
+            CooldownExitView(onCancel: { showCooldownExit = false })
         }
+    }
+
+    private func exitWithGuardianPassword() {
+        GuardianLock.shared.showExitDialog()
     }
 }

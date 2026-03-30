@@ -49,10 +49,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         // Local monitor: captures keys when app IS focused
         localMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            // Block Cmd+Q when guardian lock is enabled
+            // Always block Cmd+Q — exit only through Settings
             if event.modifierFlags.contains(.command),
-               event.charactersIgnoringModifiers == "q",
-               UserDefaults.standard.string(forKey: "guardianPasswordHash") != nil {
+               event.charactersIgnoringModifiers == "q" {
                 NotificationCenter.default.post(name: .exitRequested, object: nil)
                 return nil
             }

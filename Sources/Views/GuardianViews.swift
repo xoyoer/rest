@@ -1,4 +1,5 @@
 import SwiftUI
+import Combine
 
 // MARK: - First Launch Onboarding (三步引导)
 
@@ -19,13 +20,20 @@ struct OnboardingView: View {
             switch step {
             case .welcome:
                 WelcomePageView(
-                    onNext: { step = .setup }
+                    onNext: { step = .setup },
+                    onSkip: {
+                        GuardianLock.shared.setupShown = true
+                        onSkip()
+                    }
                 )
             case .setup:
                 GuardianSetupView(
                     isFirstLaunch: true,
                     onComplete: { step = .done },
-                    onSkip: { }  // First launch: no escape
+                    onSkip: {
+                        GuardianLock.shared.setupShown = true
+                        onSkip()
+                    }
                 )
             case .done:
                 SetupDoneView(onDone: onComplete)
@@ -41,6 +49,7 @@ extension OnboardingView.Step: Equatable {}
 
 struct WelcomePageView: View {
     var onNext: () -> Void
+    var onSkip: (() -> Void)? = nil
 
     var body: some View {
         VStack(spacing: 28) {
@@ -68,12 +77,21 @@ struct WelcomePageView: View {
 
             Spacer()
 
-            Button(action: onNext) {
-                Text("为 TA 设置守护锁")
-                    .frame(width: 200)
+            VStack(spacing: 12) {
+                Button(action: onNext) {
+                    Text("为 TA 设置守护锁")
+                        .frame(width: 200)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+
+                if let onSkip {
+                    Button("先不设置") { onSkip() }
+                        .buttonStyle(.plain)
+                        .foregroundStyle(.secondary)
+                        .font(.callout)
+                }
             }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
             .padding(.bottom, 8)
         }
         .padding(36)
@@ -108,18 +126,8 @@ struct SetupDoneView: View {
                 .font(.system(size: 44, weight: .light))
                 .foregroundStyle(.green)
 
-            VStack(spacing: 10) {
-                Text("守护锁已启用")
-                    .font(.title3.weight(.medium))
-
-                VStack(spacing: 4) {
-                    Text("程序会在菜单栏安静运行，TA 不会注意到它。")
-                    Text("连续工作超时后，就会被温柔地提醒休息。")
-                }
-                .font(.callout)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-            }
+            Text("设置完成")
+                .font(.title3.weight(.medium))
 
             if !GuardianLock.shared.guardianName.isEmpty {
                 Text("守护人：\(GuardianLock.shared.guardianName)")
@@ -131,20 +139,18 @@ struct SetupDoneView: View {
                     .clipShape(Capsule())
             }
 
+            Text("TA 现在跑不掉了。")
+                .font(.callout)
+                .foregroundStyle(.tertiary)
+
             Spacer()
 
-            VStack(spacing: 12) {
-                Button(action: onDone) {
-                    Text("完成")
-                        .frame(width: 120)
-                }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-
-                Text("你身边还有需要休息的人吗？")
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
+            Button(action: onDone) {
+                Text("完成")
+                    .frame(width: 120)
             }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
             .padding(.bottom, 16)
         }
         .padding(36)
@@ -162,6 +168,7 @@ struct GuardianSetupView: View {
     @State private var guardianName = ""
     @State private var password = ""
     @State private var confirmPassword = ""
+    @State private var passwordHint = ""
     @State private var errorMessage = ""
 
     var body: some View {
@@ -210,6 +217,14 @@ struct GuardianSetupView: View {
                     SecureField("再输入一次", text: $confirmPassword)
                         .textFieldStyle(.roundedBorder)
                 }
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("密码提示（选填）")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    TextField("忘记密码时显示", text: $passwordHint)
+                        .textFieldStyle(.roundedBorder)
+                }
             }
             .frame(width: 260)
 
@@ -221,10 +236,14 @@ struct GuardianSetupView: View {
 
             // Button
             if isFirstLaunch {
-                Button("启用守护锁") {
-                    validate()
+                VStack(spacing: 12) {
+                    Button("启用守护锁") { validate() }
+                        .buttonStyle(.borderedProminent)
+                    Button("先不设置") { onSkip() }
+                        .buttonStyle(.plain)
+                        .foregroundStyle(.secondary)
+                        .font(.callout)
                 }
-                .buttonStyle(.borderedProminent)
             } else {
                 HStack(spacing: 16) {
                     Button("取消") { onSkip() }
@@ -253,7 +272,8 @@ struct GuardianSetupView: View {
             return
         }
         let name = guardianName.trimmingCharacters(in: .whitespaces)
-        GuardianLock.shared.setPassword(password, name: name)
+        let hint = passwordHint.trimmingCharacters(in: .whitespaces)
+        GuardianLock.shared.setPassword(password, name: name, hint: hint)
         GuardianLock.shared.setupShown = true
         onComplete()
     }
@@ -384,59 +404,61 @@ struct GuardianDisableView: View {
     }
 }
 
-// MARK: - Exit with Guardian Password
+// MARK: - Cooldown Exit (no guardian lock)
 
-struct GuardianExitView: View {
+struct CooldownExitView: View {
     var onCancel: () -> Void
 
-    @State private var password = ""
-    @State private var errorMessage = ""
+    @State private var countdown = 30
+    @State private var canExit = false
+    @State private var timerCancellable: AnyCancellable?
 
     var body: some View {
         VStack(spacing: 20) {
-            Image(systemName: "lock.shield")
-                .font(.system(size: 28))
+            Spacer()
+
+            Text("退出后将不再提醒你休息。")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+
+            Text("你确定吗？")
+                .font(.title3.weight(.medium))
+
+            if canExit {
+                Button(action: { NSApplication.shared.terminate(nil) }) {
+                    Text("确认退出")
+                        .frame(width: 120)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(.red)
+            } else {
+                Text("\(countdown) 秒")
+                    .font(.system(size: 28, weight: .light, design: .rounded))
+                    .foregroundStyle(.tertiary)
+                    .monospacedDigit()
+            }
+
+            Button("取消") { onCancel() }
+                .buttonStyle(.plain)
                 .foregroundStyle(.secondary)
 
-            Text("退出需要守护密码")
-                .font(.headline)
-
-            if !GuardianLock.shared.guardianName.isEmpty {
-                Text("请联系 \(GuardianLock.shared.guardianName) 获取密码")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-            }
-
-            SecureField("守护密码", text: $password)
-                .textFieldStyle(.roundedBorder)
-                .frame(width: 200)
-                .onSubmit { attempt() }
-
-            if !errorMessage.isEmpty {
-                Text(errorMessage)
-                    .font(.callout)
-                    .foregroundStyle(.red)
-            }
-
-            HStack(spacing: 16) {
-                Button("取消") { onCancel() }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(.secondary)
-                Button("确认退出") { attempt() }
-                    .buttonStyle(.borderedProminent)
-                    .tint(.red)
-            }
+            Spacer()
         }
         .padding(30)
-        .frame(width: 320)
-    }
-
-    private func attempt() {
-        if GuardianLock.shared.verify(password) {
-            NSApplication.shared.terminate(nil)
-        } else {
-            errorMessage = "密码错误"
-            password = ""
+        .frame(width: 300, height: 260)
+        .onAppear {
+            timerCancellable = Timer.publish(every: 1, on: .main, in: .common)
+                .autoconnect()
+                .sink { _ in
+                    guard countdown > 0 else { return }
+                    countdown -= 1
+                    if countdown == 0 { canExit = true }
+                }
+        }
+        .onDisappear {
+            timerCancellable?.cancel()
+            timerCancellable = nil
         }
     }
 }

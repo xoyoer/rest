@@ -102,16 +102,6 @@ struct MenuBarPopover: View {
                 }
                 .buttonStyle(.plain)
                 .padding(.leading, 8)
-
-                if !GuardianLock.shared.isEnabled {
-                    Button(action: onExit) {
-                        Text("退出")
-                            .font(.system(size: 12))
-                            .foregroundStyle(.secondary)
-                    }
-                    .buttonStyle(.plain)
-                    .padding(.leading, 8)
-                }
             }
         }
         .padding(14)
@@ -188,43 +178,28 @@ struct MenuBarPopover: View {
     private func sessionRow(_ session: WorkSession) -> some View {
         HStack(spacing: 0) {
             Text(String(session.start.prefix(5)))
-                .font(.system(size: 12, design: .monospaced))
-                .foregroundStyle(.primary)
-                .frame(width: 42, alignment: .leading)
+                .frame(width: 38, alignment: .leading)
 
             Text("–")
-                .font(.system(size: 12))
-                .foregroundStyle(.tertiary)
-                .padding(.horizontal, 4)
+                .foregroundStyle(.quaternary)
+                .padding(.horizontal, 3)
 
             Text(session.end.map { String($0.prefix(5)) } ?? "now")
-                .font(.system(size: 12, design: .monospaced))
                 .foregroundStyle(session.end == nil ? .green : .primary)
-                .frame(width: 42, alignment: .leading)
+                .frame(width: 38, alignment: .leading)
 
             Spacer()
 
             if session.isRest {
-                HStack(spacing: 3) {
-                    Image(systemName: session.skipped ? "forward.fill" : "leaf")
-                        .font(.system(size: 9))
-                    if session.skipped || (session.end != nil && session.seconds < 10) {
-                        Text("已跳过")
-                            .font(.system(size: 12))
-                    } else if session.seconds > 0 {
-                        Text("休息 \(FatigueCalculator.formatDuration(session.seconds))")
-                            .font(.system(size: 12))
-                    } else {
-                        Text("休息中")
-                            .font(.system(size: 12))
-                    }
-                }
-                .foregroundStyle(.secondary)
+                Text(session.skipped || (session.end != nil && session.seconds < 10)
+                    ? "跳过" : session.seconds > 0
+                    ? "休息 \(FatigueCalculator.formatDuration(session.seconds))" : "休息中")
+                    .foregroundStyle(.tertiary)
             } else {
                 Text(FatigueCalculator.formatDuration(session.seconds))
-                    .font(.system(size: 12))
                     .foregroundStyle(.secondary)
             }
         }
+        .font(.system(size: 11))
     }
 }

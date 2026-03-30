@@ -132,8 +132,8 @@ final class AppCoordinator: ObservableObject {
         activityMonitor.start()
         timerEngine.start()
 
-        // Periodically save usage data (every 60 seconds)
-        usageSaveTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) {
+        // Periodically save usage data (every 30 seconds)
+        usageSaveTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) {
             [weak self] _ in
             DispatchQueue.main.async { [weak self] in
                 self?.saveUsageData()
@@ -217,6 +217,13 @@ final class AppCoordinator: ObservableObject {
         }
     }
 
+    deinit {
+        usageSaveTimer?.invalidate()
+        flashTimer?.invalidate()
+        NotificationCenter.default.removeObserver(self)
+        cancellables.removeAll()
+    }
+
     // MARK: - Settings Sync
 
     private func syncSettingsToEngines() {
@@ -257,7 +264,7 @@ final class AppCoordinator: ObservableObject {
         let settingsContent = SettingsContainer(settings: settings, usageStore: usageStore)
 
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 480, height: 540),
+            contentRect: NSRect(x: 0, y: 0, width: 480, height: 700),
             styleMask: [.titled, .closable, .miniaturizable],
             backing: .buffered,
             defer: false
@@ -371,41 +378,13 @@ final class AppCoordinator: ObservableObject {
         if GuardianLock.shared.isEnabled {
             showExitPasswordDialog()
         } else {
-            NSApplication.shared.terminate(nil)
+            // No guardian lock — open settings (exit is there with cooldown)
+            openSettings()
         }
     }
 
     private func showExitPasswordDialog() {
-        let guardian = GuardianLock.shared
-        let alert = NSAlert()
-        alert.messageText = "需要守护密码才能退出"
-        if !guardian.guardianName.isEmpty {
-            alert.informativeText = "请联系 \(guardian.guardianName) 获取密码"
-        }
-        alert.alertStyle = .informational
-        alert.addButton(withTitle: "确认退出")
-        alert.addButton(withTitle: "取消")
-
-        let input = NSSecureTextField(frame: NSRect(x: 0, y: 0, width: 200, height: 24))
-        input.placeholderString = "守护密码"
-        alert.accessoryView = input
-        alert.window.initialFirstResponder = input
-
-        NSApp.activate(ignoringOtherApps: true)
-        let response = alert.runModal()
-        if response == .alertFirstButtonReturn {
-            if guardian.verify(input.stringValue) {
-                NSApplication.shared.terminate(nil)
-            } else {
-                let errorAlert = NSAlert()
-                errorAlert.messageText = "密码错误"
-                if !guardian.guardianName.isEmpty {
-                    errorAlert.informativeText = "请联系 \(guardian.guardianName) 获取正确密码"
-                }
-                errorAlert.alertStyle = .warning
-                errorAlert.runModal()
-            }
-        }
+        GuardianLock.shared.showExitDialog()
     }
 
     // MARK: - Guardian Lock: First Launch Setup
@@ -426,7 +405,7 @@ final class AppCoordinator: ObservableObject {
 
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 400, height: 460),
-            styleMask: [.titled],
+            styleMask: [.titled, .closable],
             backing: .buffered,
             defer: false
         )

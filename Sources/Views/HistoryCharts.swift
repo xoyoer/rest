@@ -28,11 +28,7 @@ struct HistoryChartsView: View {
         let hasData: Bool
     }
 
-    private static let dateFmt: DateFormatter = {
-        let f = DateFormatter()
-        f.dateFormat = "yyyy-MM-dd"
-        return f
-    }()
+    private static var dateFmt: DateFormatter { DateFormatting.dateFmt }
 
     // MARK: - Data
 
@@ -247,6 +243,8 @@ struct HistoryChartsView: View {
                 }
             } header: {
                 Text("使用时长")
+            } footer: {
+                Text("所有数据仅存储在本机，不会上传到任何服务器。")
             }
 
         }
