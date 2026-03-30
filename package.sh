@@ -15,14 +15,14 @@ fi
 
 echo "Packaging $APP_NAME v$VERSION..."
 
-# Clean old DMG
+# Clean
 rm -f "$BUILD_DIR/$DMG_NAME"
 rm -rf "$BUILD_DIR/dmg-staging"
 
-# Create staging directory with app and Applications symlink
+# Create staging directory
 mkdir -p "$BUILD_DIR/dmg-staging"
 cp -R "$BUILD_DIR/$BUNDLE_NAME" "$BUILD_DIR/dmg-staging/"
-cp 安装说明.txt "$BUILD_DIR/dmg-staging/"
+cp 安装必读.txt "$BUILD_DIR/dmg-staging/"
 ln -s /Applications "$BUILD_DIR/dmg-staging/Applications"
 
 # Create DMG
@@ -33,7 +33,7 @@ hdiutil create \
     -format UDZO \
     "$BUILD_DIR/$DMG_NAME"
 
-# Clean staging
+# Clean
 rm -rf "$BUILD_DIR/dmg-staging"
 
 echo "✓ Package complete: $BUILD_DIR/$DMG_NAME"
