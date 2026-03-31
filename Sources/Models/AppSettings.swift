@@ -53,6 +53,60 @@ class AppSettings: ObservableObject {
         updateLaunchAtLogin()
     }
 
+    // MARK: - Time Picker Options
+
+    struct TimeOption {
+        let hour: Int
+        let minute: Int
+        var label: String {
+            String(format: "%d:%02d", hour, minute)
+        }
+    }
+
+    static let bedtimeOptions: [TimeOption] = {
+        var opts: [TimeOption] = []
+        for h in 20...23 {
+            opts.append(TimeOption(hour: h, minute: 0))
+            opts.append(TimeOption(hour: h, minute: 30))
+        }
+        for h in 0...3 {
+            opts.append(TimeOption(hour: h, minute: 0))
+            opts.append(TimeOption(hour: h, minute: 30))
+        }
+        return opts
+    }()
+
+    static let wakeOptions: [TimeOption] = {
+        var opts: [TimeOption] = []
+        for h in 5...11 {
+            opts.append(TimeOption(hour: h, minute: 0))
+            opts.append(TimeOption(hour: h, minute: 30))
+        }
+        return opts
+    }()
+
+    var bedtimeTimeIndex: Int {
+        get {
+            Self.bedtimeOptions.firstIndex(where: { $0.hour == bedtimeHour && $0.minute == bedtimeMinute }) ?? 6
+        }
+        set {
+            let opt = Self.bedtimeOptions[newValue]
+            bedtimeHour = opt.hour
+            bedtimeMinute = opt.minute
+        }
+    }
+
+    var wakeTimeIndex: Int {
+        get {
+            Self.wakeOptions.firstIndex(where: { $0.hour == wakeHour && $0.minute == wakeMinute }) ?? 6
+        }
+        set {
+            let opt = Self.wakeOptions[newValue]
+            wakeHour = opt.hour
+            wakeMinute = opt.minute
+        }
+    }
+
     private func updateLaunchAtLogin() {
         do {
             if launchAtLogin {
