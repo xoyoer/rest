@@ -377,7 +377,9 @@ final class AppCoordinator: ObservableObject {
             onUnlock: { [weak self] in
                 self?.bedtimeEngine.temporaryUnlock()
             },
-            onCancel: {}
+            onCancel: { [weak self] in
+                self?.bedtimeController.resumeRefocus()
+            }
         )
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 300, height: 260),

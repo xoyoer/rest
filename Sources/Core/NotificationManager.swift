@@ -44,10 +44,17 @@ struct NotificationManager {
     static func sendBedtimeWarning(minutes: Int) {
         let content = UNMutableNotificationContent()
         content.title = "休息"
-        if minutes > 0 {
-            content.body = "距离就寝还有 \(minutes) 分钟，准备收工"
-        } else {
-            content.body = "30 秒后进入就寝模式"
+        switch minutes {
+        case 10:
+            content.body = "距离就寝还有 10 分钟，请开始保存工作"
+        case 5:
+            content.body = "距离就寝还有 5 分钟，请保存所有工作"
+        case 1:
+            content.body = "1 分钟后全屏锁定，立即保存"
+        case 0:
+            content.body = "30 秒后锁定屏幕"
+        default:
+            content.body = "距离就寝还有 \(minutes) 分钟"
         }
         content.sound = .default
 
